@@ -1,0 +1,38 @@
+PAINEL DE BOLSAS CAPES/DPB (1995-2025)
+=====================================
+
+COMO ABRIR
+1. Extraia a pasta inteira do arquivo .zip (não abra direto de dentro do .zip).
+2. Dê dois cliques em index.html. Ele abre no navegador (Chrome, Edge,
+   Firefox ou Safari).
+
+Não precisa de internet nem de instalar nada. Mantenha juntos:
+
+  index.html   o painel
+  dados.js     os dados (bolsas somadas por ano, UF, instituição,
+               área de avaliação e modalidade)
+  vendor/      template visual, fonte, biblioteca de gráficos e mapa
+
+COMO USAR
+- Filtre na barra lateral por período, UF, nível ou modalidade, área de
+  avaliação e instituição (digite a sigla, por exemplo USP).
+- Clique em uma barra ou em uma UF do mapa para filtrar o painel; clique de
+  novo para tirar o filtro.
+- Os filtros ativos aparecem abaixo do título; clique em um para removê-lo,
+  ou em "Limpar filtros" para voltar ao início.
+- "PNG", no canto de cada gráfico, salva a imagem com título, filtros e
+  fonte, pronta para slides e relatórios.
+- "Baixar seleção (CSV)" salva as linhas filtradas num arquivo que abre
+  direto no Excel (separado por ponto e vírgula).
+- O painel segue o tema claro ou escuro do seu sistema.
+
+SOBRE OS DADOS
+Fonte: base de concessão de bolsas da CAPES, Diretoria de Programas e Bolsas
+no País (DPB). Mapa: malha estadual do IBGE (2020), via pacote geobr. Veja
+"Sobre os dados", no fim do painel, para as observações, como a quebra de
+série do mestrado profissional em 2013/2014.
+
+COMPONENTES DE TERCEIROS (pasta vendor/)
+- Tabler 1.0.0 (template visual), licença MIT: vendor/LICENSE-tabler.txt
+- Inter (fonte), licença SIL Open Font License 1.1: vendor/LICENSE-inter.txt
+- D3 7.9.0 (gráficos), licença ISC
