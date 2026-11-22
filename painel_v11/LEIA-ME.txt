@@ -1,0 +1,76 @@
+PAINEL DE BOLSAS CAPES/DPB (1995-2025) - versão 11
+==================================================
+
+Igual à versão 10 (visual da versão 3, áreas de avaliação pelo nome de 2025,
+filtro por programa de fomento e notas de método, fonte e autoria, com
+números animados), com a área de avaliação de 2017 a 2019 recuperada pelo
+código do programa. Números animados: os totais contam até o valor novo a cada mudança de
+filtro. Com "reduzir movimento" ligado no sistema, os números mudam direto.
+
+COMO ABRIR
+1. Extraia a pasta inteira do arquivo .zip (não abra direto de dentro do .zip).
+2. Dê dois cliques em index.html. Ele abre no navegador (Chrome, Edge,
+   Firefox ou Safari).
+
+Não precisa de internet nem de instalar nada. Mantenha juntos:
+
+  index.html   o painel
+  dados.js     os dados (bolsas somadas por ano, UF, instituição,
+               área de avaliação, modalidade e programa de fomento)
+  vendor/      template visual, fonte, biblioteca de gráficos e mapa
+
+COMO USAR
+- Filtre na barra lateral por período, UF, nível ou modalidade, área de
+  avaliação, instituição (digite a sigla, por exemplo USP) e programa de
+  fomento (digite o nome, por exemplo PROEX).
+- Clique em uma barra ou em uma UF do mapa para filtrar o painel; clique de
+  novo para tirar o filtro.
+- Os filtros ativos aparecem abaixo do título; clique em um para removê-lo,
+  ou em "Limpar filtros" para voltar ao início.
+- "PNG", no canto de cada gráfico, salva a imagem com título, filtros, fonte
+  e autoria, pronta para slides e relatórios.
+- "Baixar seleção (CSV)" salva as linhas filtradas num arquivo que abre
+  direto no Excel (separado por ponto e vírgula), com a coluna programa.
+- Ao abrir, o painel segue o tema claro ou escuro do seu sistema. O botão
+  ao lado do nome, no topo da barra lateral, alterna entre claro e escuro;
+  a escolha fica guardada no navegador.
+
+SOBRE OS DADOS
+Autoria: painel gerado por Claude, IA da Anthropic, sob supervisão de
+Claudio de Oliveira, a partir de dados públicos da CAPES disponíveis no
+GEOCAPES (geocapes.capes.gov.br).
+Fonte: base de concessão de bolsas da CAPES, Diretoria de Programas e
+Bolsas no País (DPB). Mapa: malha estadual do IBGE (2020), via
+pacote geobr. Veja "Sobre os dados", no fim do painel, para as
+observações, como a quebra de série do mestrado profissional em 2013/2014
+(até 2013 a base inclui outra diretoria da CAPES; de 2014 em diante, só a
+DPB).
+
+ALTERAÇÃO METODOLÓGICA
+- Área de avaliação em 2017, 2018 e 2019: nesses anos a base não informa a
+  área de nenhuma bolsa, mas informa o código do programa de pós-graduação.
+  A área foi recuperada por esse código, a partir dos outros anos: programa
+  que sempre teve a mesma área recebe essa área; programa que mudou de área
+  recebe a que tinha em 2020 (ou, se não aparece em 2020, a do ano mais
+  próximo). Bolsas sem código de programa, ou de programas sem área
+  conhecida, continuam sem área. Os valores por área nesses anos são
+  estimados, não registrados na base.
+  As bolsas que continuam sem área (cerca de 95 mil na série toda, em
+  todos os anos) não têm, na base, nem código de programa nem área de
+  conhecimento; não há como recuperar a área delas. A maior parte é da
+  Demanda Social (DS) e de Jovens Talentos/Iniciação Científica (JTCIC).
+- Áreas de avaliação: nove áreas mudaram de nome ao longo da série. Neste
+  painel, todos os anos usam o nome em vigor em 2025, para que cada área
+  tenha uma série contínua. A base original não é alterada; a troca é feita
+  só nos dados do painel. A lista de correspondências está no painel.
+- Programa de fomento: nomes que só diferem em maiúsculas e minúsculas
+  (Fapesp e FAPESP; Prosup e PROSUP) foram unidos sob a grafia mais
+  frequente.
+
+ATUALIZAR OS DADOS
+Na pasta do projeto: python3 painel_v11/gera_dados_v11.py
+
+COMPONENTES DE TERCEIROS (pasta vendor/)
+- Tabler 1.0.0 (template visual), licença MIT: vendor/LICENSE-tabler.txt
+- Inter (fonte), licença SIL Open Font License 1.1: vendor/LICENSE-inter.txt
+- D3 7.9.0 (gráficos), licença ISC

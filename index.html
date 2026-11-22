@@ -7,18 +7,33 @@
 <style>
   :root { color-scheme: light dark; }
   body {
-    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background: #f6f8fb; color: #1d273b;
   }
-  a { font-size: 1.25rem; color: #066fd1; }
+  main { max-width: 560px; width: 100%; }
+  h1 { font-size: 1.4rem; margin: 0 0 1.25rem; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  li a { display: block; padding: 14px 16px; border-radius: 12px; background: #fff; border: 1px solid #e3e7ee; text-decoration: none; color: inherit; }
+  li a:hover, li a:focus-visible { border-color: #066fd1; }
+  li strong { color: #066fd1; font-size: 1.05rem; }
+  li span { display: block; font-size: 0.9rem; color: #5b6578; margin-top: 2px; }
   @media (prefers-color-scheme: dark) {
     body { background: #151f2c; color: #e5e7eb; }
-    a { color: #4d9bea; }
+    li a { background: #1d2a3a; border-color: #2c3b50; }
+    li a:hover, li a:focus-visible { border-color: #4d9bea; }
+    li strong { color: #4d9bea; }
+    li span { color: #a9b3c2; }
   }
 </style>
 </head>
 <body>
-  <a href="painel_v3/">Painel de bolsas CAPES/DPB (1995–2025)</a>
+<main>
+  <h1>Painel de bolsas CAPES/DPB (1995–2025), fonte GEOCAPES</h1>
+  <ul>
+    <li><a href="painel_v11/index.html"><strong>Versão 11</strong></a></li>
+  
+  </ul>
+</main>
 </body>
 </html>

@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bolsas CAPES/DPB</title>
+<meta name="author" content="Claude, IA da Anthropic, sob supervisão de Claudio de Oliveira">
+<!--
+  Painel local de bolsas CAPES/DPB (painel_v11, igual à v10 + área de avaliação recuperada em 2017–2019 pelo código do programa) — layout de BI com o template Tabler
+  Visual da v3, com as áreas de avaliação pelo nome de 2025 e filtro por programa de fomento
+  Abre direto do disco (duplo clique), sem internet e sem servidor.
+  Precisa, na mesma pasta: index.html, dados.js e a pasta vendor/
+  Atualizar os dados: na pasta do projeto, python3 painel_v11/gera_dados_v11.py
+-->
+<script>
+  // Tema do Tabler (claro/escuro): na primeira vez segue o sistema de quem abre; o botão no topo da
+  // barra lateral alterna, e a escolha fica guardada neste navegador (sem escolha guardada, segue o sistema)
+  (function () {
+    var m = window.matchMedia('(prefers-color-scheme: dark)');
+    function escolhido() { try { var t = localStorage.getItem('painel_v11_tema'); return t === 'light' || t === 'dark' ? t : null; } catch (e) { return null; } }
+    function aplicar() { document.documentElement.setAttribute('data-bs-theme', escolhido() || (m.matches ? 'dark' : 'light')); }
+    aplicar();
+    m.addEventListener('change', aplicar);
+  })();
+</script>
+<link rel="stylesheet" href="vendor/tabler.min.css">
+<style>
+  @font-face {
+    font-family: 'Inter Var';
+    src: url('vendor/inter-latin-wght-normal.woff2') format('woff2');
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  /* Layout: barra lateral fixa com filtros (vira bloco no topo no celular) + conteúdo em grade de cartões */
+  :root {
+    --tblr-font-sans-serif: 'Inter Var', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    --bp-side-w: 284px;
+  }
+  body { background: var(--tblr-body-bg); }
+  .bp-layout { display: grid; grid-template-columns: var(--bp-side-w) minmax(0, 1fr); min-height: 100vh; }
+  @media (max-width: 991.98px) { .bp-layout { grid-template-columns: minmax(0, 1fr); } }
+
+  .bp-side { background: var(--tblr-bg-surface); border-right: 1px solid var(--tblr-border-color); color: var(--tblr-body-color); }
+  .bp-side-inner { position: sticky; top: 0; max-height: 100vh; overflow-y: auto; padding: 20px 18px 24px; display: flex; flex-direction: column; gap: 14px; }
+  @media (max-width: 991.98px) { .bp-side { border-right: 0; border-bottom: 1px solid var(--tblr-border-color); } .bp-side-inner { position: static; max-height: none; } }
+  .bp-brand { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--tblr-border-color); }
+  .bp-brand-mark { width: 32px; height: 32px; border-radius: 8px; background: var(--tblr-primary); display: grid; place-items: center; color: #fff; flex: none; }
+  .bp-brand-title { font-weight: 600; line-height: 1.2; }
+  .bp-brand-sub { font-size: 12px; color: var(--tblr-secondary-color); }
+  .bp-brand > div { flex: 1; min-width: 0; }
+  .bp-tema { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--tblr-border-color); background: transparent; color: var(--tblr-secondary-color); cursor: pointer; }
+  .bp-tema:hover { color: var(--tblr-body-color); background: var(--tblr-bg-surface-secondary); }
+  .bp-tema:focus-visible { outline: 2px solid var(--tblr-primary); outline-offset: 2px; }
+  .bp-side-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--tblr-secondary-color); margin: 4px 0 -6px; }
+  .bp-side .form-label { font-size: 12px; margin-bottom: 4px; color: var(--tblr-secondary-color); }
+  .bp-years { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .bp-side-actions { display: grid; gap: 8px; margin-top: 4px; }
+  .mapa-areas { margin: 8px 0 8px; padding-left: 1.1em; font-size: 13px; columns: 2 380px; column-gap: 32px; }
+  .mapa-areas li { break-inside: avoid; margin: 0 0 4px; }
+  .bp-side-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--tblr-border-color); font-size: 12px; color: var(--tblr-secondary-color); }
+  .bp-hint { font-size: 12px; color: var(--tblr-danger); margin: 4px 0 0; }
+
+  .bp-main { min-width: 0; padding-block: 24px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  @media (min-width: 992px) { .bp-main { padding-left: 28px; padding-right: 28px; } }
+  .bp-autoria { margin: 2px 0 0; font-size: 12px; color: var(--tblr-secondary-color); }
+  .bp-autoria a, .bp-side-foot a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .bp-lede { color: var(--tblr-secondary-color); max-width: 78ch; margin: 6px 0 0; }
+  .bp-lede b { color: var(--tblr-body-color); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bp-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; font-size: 12px; color: var(--tblr-secondary-color); }
+  .bp-chip { font: inherit; display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--tblr-border-color); background: var(--tblr-bg-surface); color: var(--tblr-body-color); cursor: pointer; }
+  .bp-chip:hover { border-color: var(--tblr-primary); }
+  .bp-chip-x { color: var(--tblr-secondary-color); }
+
+  .bp-kpi-num { font-size: 28px; font-weight: 600; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .bp-kpi-sub { font-size: 12px; color: var(--tblr-secondary-color); font-variant-numeric: tabular-nums; }
+  .bp-up { color: var(--tblr-success); }
+  .bp-down { color: var(--tblr-danger); }
+
+  .card-header { gap: 8px; }
+  .bp-card-sub { font-size: 12px; color: var(--tblr-secondary-color); margin: 2px 0 0; }
+  .bp-png { white-space: nowrap; }
+  .bp-chart { position: relative; min-width: 0; }
+  .bp-chart svg { display: block; overflow: visible; }
+  .bp-chart-serie { min-height: 260px; }
+  .bp-chart-mapa { min-height: 380px; }
+  .bp-chart-uf { min-height: 380px; }
+  .bp-chart-list { min-height: 300px; }
+  .bp-state { margin: 0; padding: 16px 0; color: var(--tblr-secondary-color); font-size: 12px; }
+  .bp-warn { font-size: 12px; margin: 12px 0 0; padding: 8px 12px; border-left: 3px solid var(--tblr-warning); background: var(--tblr-bg-surface-secondary); }
+
+  .bp-tick { fill: var(--tblr-secondary-color); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .bp-lbl { fill: var(--tblr-body-color); font-size: 12px; }
+  .bp-val { fill: var(--tblr-secondary-color); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .bp-row, .bp-col, .bp-uf { cursor: pointer; outline: none; }
+  .bp-row:focus-visible .bp-hit, .bp-col:focus-visible .bp-hit { stroke: var(--tblr-primary); stroke-width: 1.5; }
+  .bp-uf:focus-visible { stroke: var(--tblr-body-color); stroke-width: 2; }
+  .bp-row:hover .bp-lbl { text-decoration: underline; }
+  .bp-tip { position: absolute; z-index: 5; pointer-events: none; padding: 6px 9px; background: var(--tblr-bg-surface); border: 1px solid var(--tblr-border-color); box-shadow: var(--tblr-box-shadow-dropdown, 0 4px 16px rgba(0,0,0,.12)); border-radius: 6px; font-size: 12px; line-height: 1.4; white-space: nowrap; color: var(--tblr-body-color); }
+  .bp-tip-sub { color: var(--tblr-secondary-color); }
+
+  /* Cores dos gráficos, derivadas da cor primária do tema */
+  :root {
+    --bp-bar: var(--tblr-primary);
+    --bp-bar-muted: color-mix(in srgb, var(--tblr-primary) 22%, var(--tblr-bg-surface));
+    --bp-grid: var(--tblr-border-color);
+    --bp-axis: color-mix(in srgb, var(--tblr-secondary-color) 60%, transparent);
+    --bp-map-0: var(--tblr-bg-surface-secondary);
+    --bp-map-1: color-mix(in srgb, var(--tblr-primary) 14%, var(--tblr-bg-surface));
+    --bp-map-2: color-mix(in srgb, var(--tblr-primary) 34%, var(--tblr-bg-surface));
+    --bp-map-3: color-mix(in srgb, var(--tblr-primary) 56%, var(--tblr-bg-surface));
+    --bp-map-4: color-mix(in srgb, var(--tblr-primary) 78%, var(--tblr-bg-surface));
+    --bp-map-5: var(--tblr-primary);
+    --bp-map-stroke: var(--tblr-bg-surface);
+  }
+  .bp-about li + li { margin-top: 4px; }
+  .bp-erro { margin: 24px; }
+</style>
+</head>
+<body>
+<div class="alert alert-danger bp-erro" id="erro" hidden>Não encontrei <code>dados.js</code> ou a pasta <code>vendor/</code>. Eles precisam estar junto com este <code>index.html</code>. Se você recebeu a pasta compactada, extraia tudo antes de abrir.</div>
+
+<div class="bp-layout">
+  <aside class="bp-side" data-bs-theme="dark" aria-label="Filtros">
+    <div class="bp-side-inner">
+      <div class="bp-brand">
+        <span class="bp-brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 9 12 4 2 9l10 5 10-5Z"/><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/></svg>
+        </span>
+        <div>
+          <div class="bp-brand-title">Bolsas CAPES/DPB</div>
+          <div class="bp-brand-sub">Painel de concessões</div>
+        </div>
+        <button class="bp-tema" id="tema" type="button" aria-label="Trocar para o tema escuro" title="Trocar para o tema escuro">
+          <svg id="ico-tema" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
+        </button>
+      </div>
+
+      <div class="bp-side-label">Filtros</div>
+      <div>
+        <span class="form-label">Período</span>
+        <div class="bp-years">
+          <select class="form-select" id="f-de" aria-label="Ano inicial"></select>
+          <select class="form-select" id="f-ate" aria-label="Ano final"></select>
+        </div>
+      </div>
+      <div><label class="form-label" for="f-uf">UF</label><select class="form-select" id="f-uf"></select></div>
+      <div><label class="form-label" for="f-mod">Nível ou modalidade</label><select class="form-select" id="f-mod"></select></div>
+      <div><label class="form-label" for="f-area">Área de avaliação</label><select class="form-select" id="f-area"></select></div>
+      <div>
+        <label class="form-label" for="f-ies">Instituição (sigla)</label>
+        <input class="form-control" id="f-ies" type="search" list="ies-lista" placeholder="Ex.: USP" autocomplete="off" spellcheck="false">
+        <datalist id="ies-lista"></datalist>
+        <p class="bp-hint" id="ies-erro" hidden>Instituição não encontrada. Escolha uma sigla da lista.</p>
+      </div>
+      <div>
+        <label class="form-label" for="f-prog">Programa de fomento</label>
+        <input class="form-control" id="f-prog" type="search" list="prog-lista" placeholder="Ex.: PROEX" autocomplete="off" spellcheck="false">
+        <datalist id="prog-lista"></datalist>
+        <p class="bp-hint" id="prog-erro" hidden>Programa de fomento não encontrado. Escolha um nome da lista.</p>
+      </div>
+      <div class="bp-side-actions">
+        <button class="btn btn-outline-secondary" id="limpar" type="button">Limpar filtros</button>
+        <button class="btn btn-primary" id="baixar" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Baixar seleção (CSV)
+        </button>
+      </div>
+      <div class="bp-side-foot"><div>Dados: <span id="fonte-side">dados.xlsx (CAPES/DPB)</span></div><div>Autoria: painel gerado por Claude, IA da Anthropic, sob supervisão de Claudio de Oliveira, a partir de dados públicos da CAPES disponíveis no <a href="https://geocapes.capes.gov.br" target="_blank" rel="noopener">GEOCAPES (geocapes.capes.gov.br)</a>.</div></div>
+    </div>
+  </aside>
+
+  <main class="bp-main">
+    <div class="page-header d-print-none" style="margin:0 0 16px">
+      <div class="page-pretitle">Painel de dados · 1995 a 2025</div>
+      <h1 class="page-title" style="font-size:24px">Bolsas concedidas pela CAPES (DPB)</h1>
+      <p class="bp-autoria">Painel gerado por Claude, IA da Anthropic, sob supervisão de Claudio de Oliveira, a partir de dados públicos da CAPES disponíveis no <a href="https://geocapes.capes.gov.br" target="_blank" rel="noopener">GEOCAPES (geocapes.capes.gov.br)</a></p>
+      <p class="bp-lede">
+        De <b id="t-ano-ini">—</b> a <b id="t-ano-fim">—</b>, a seleção soma <b id="t-total">—</b> bolsas.<span id="t-lider"> A UF com mais bolsas é <b id="t-uf-lider">—</b>, com <b id="t-part-lider">—</b> do total.</span>
+      </p>
+      <div class="bp-chips"><span>Filtros ativos:</span><span id="chips" class="bp-chips" style="margin:0"></span></div>
+    </div>
+
+    <div class="row row-deck row-cards">
+      <div class="col-sm-6 col-xl-3">
+        <div class="card"><div class="card-body">
+          <div class="subheader">Bolsas no período</div>
+          <div class="bp-kpi-num" id="k-total">—</div>
+          <div class="bp-kpi-sub"><span id="k-ano-ini">—</span> a <span id="k-ano-fim">—</span></div>
+        </div></div>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <div class="card"><div class="card-body">
+          <div class="subheader">Bolsas em <span id="k-ano-fim2">—</span></div>
+          <div class="bp-kpi-num" id="k-ultimo">—</div>
+          <div class="bp-kpi-sub"><span id="k-var-com"><span id="k-var">—</span> em relação a <span id="k-ano-ant">—</span></span><span id="k-var-sem" hidden>Sem ano anterior na base para comparar</span></div>
+        </div></div>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <div class="card"><div class="card-body">
+          <div class="subheader">Média por ano</div>
+          <div class="bp-kpi-num" id="k-media">—</div>
+          <div class="bp-kpi-sub">Total do período dividido pelo número de anos</div>
+        </div></div>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <div class="card"><div class="card-body">
+          <div class="subheader">Instituições com bolsas</div>
+          <div class="bp-kpi-num" id="k-ies">—</div>
+          <div class="bp-kpi-sub">Siglas distintas no período</div>
+        </div></div>
+      </div>
+
+      <div class="col-12">
+        <div class="card" data-png="serie" data-titulo="Bolsas por ano">
+          <div class="card-header">
+            <div><h3 class="card-title">Bolsas por ano</h3><p class="bp-card-sub">Barras escuras estão no período escolhido. Clique em um ano para filtrar por ele; clique de novo para voltar.</p></div>
+            <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary bp-png" type="button" aria-label="Salvar o gráfico Bolsas por ano como PNG">PNG</button></div>
+          </div>
+          <div class="card-body">
+            <div class="bp-chart bp-chart-serie" id="g-serie"></div>
+            <p class="bp-warn" id="aviso-mp" hidden>Quebra de série no mestrado profissional: até 2013 os números incluem bolsas de outra diretoria da CAPES; de 2014 em diante, só da DPB. A queda a partir de 2014 vem dessa mudança de cobertura, não de corte de bolsas.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-7">
+        <div class="card" data-png="mapa" data-titulo="Bolsas por UF (mapa)">
+          <div class="card-header">
+            <div><h3 class="card-title">Mapa por UF</h3><p class="bp-card-sub">No período escolhido. Cores em escala logarítmica, para distinguir tanto as UFs com muitas quanto as com poucas bolsas. Clique em uma UF para filtrar.</p></div>
+            <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary bp-png" type="button" aria-label="Salvar o mapa por UF como PNG">PNG</button></div>
+          </div>
+          <div class="card-body"><div class="bp-chart bp-chart-mapa" id="g-mapa"></div></div>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="card" data-png="uf" data-titulo="Bolsas por UF">
+          <div class="card-header">
+            <div><h3 class="card-title">Por UF</h3><p class="bp-card-sub">No período escolhido. Clique em uma UF para filtrar.</p></div>
+            <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary bp-png" type="button" aria-label="Salvar o gráfico por UF como PNG">PNG</button></div>
+          </div>
+          <div class="card-body"><div class="bp-chart bp-chart-uf" id="g-uf"></div></div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card" data-png="modalidade" data-titulo="Bolsas por modalidade">
+          <div class="card-header">
+            <div><h3 class="card-title">Por modalidade</h3><p class="bp-card-sub">Clique em uma modalidade para filtrar.</p></div>
+            <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary bp-png" type="button" aria-label="Salvar o gráfico por modalidade como PNG">PNG</button></div>
+          </div>
+          <div class="card-body"><div class="bp-chart bp-chart-list" id="g-mod"></div></div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card" data-png="ies" data-titulo="As 15 instituições com mais bolsas">
+          <div class="card-header">
+            <div><h3 class="card-title">As 15 instituições com mais bolsas</h3><p class="bp-card-sub">Clique em uma instituição para filtrar.</p></div>
+            <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary bp-png" type="button" aria-label="Salvar o gráfico de instituições como PNG">PNG</button></div>
+          </div>
+          <div class="card-body"><div class="bp-chart bp-chart-list" id="g-ies"></div></div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="card" data-png="area" data-titulo="As 15 áreas de avaliação com mais bolsas">
+          <div class="card-header">
+            <div><h3 class="card-title">As 15 áreas de avaliação com mais bolsas</h3><p class="bp-card-sub">Clique em uma área para filtrar.</p></div>
+            <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary bp-png" type="button" aria-label="Salvar o gráfico de áreas como PNG">PNG</button></div>
+          </div>
+          <div class="card-body"><div class="bp-chart bp-chart-list" id="g-area"></div></div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Sobre os dados</h3></div>
+          <div class="card-body bp-about text-secondary" style="font-size:13px">
+            <ul style="margin:0;padding-left:1.2em">
+              <li>Autoria: painel gerado por Claude, IA da Anthropic, sob supervisão de Claudio de Oliveira, a partir de dados públicos da CAPES disponíveis no <a href="https://geocapes.capes.gov.br" target="_blank" rel="noopener">GEOCAPES (geocapes.capes.gov.br)</a>.</li>
+              <li>Fonte: base de concessão de bolsas da CAPES, Diretoria de Programas e Bolsas no País (DPB), <span id="fonte">arquivo dados.xlsx</span>. Os números são somas das bolsas por ano, UF, instituição, área de avaliação, modalidade e programa de fomento.</li>
+              <li>Mestrado profissional: até 2013 a base inclui bolsas de outra diretoria da CAPES; de 2014 em diante, só da DPB. A série não é comparável entre esses dois períodos.</li>
+              <li><b>Alteração metodológica: nomes das áreas de avaliação.</b> Nove áreas mudaram de nome ao longo da série, em 2021 ou em 2025 (Comunicação e Informação mudou duas vezes). Neste painel, todos os anos usam o nome em vigor em 2025, para que cada área tenha uma série contínua. A base original não é alterada; a troca é feita só nos dados do painel. Correspondências (nome antigo → nome de 2025):
+                <ul class="mapa-areas" id="mapa-areas"></ul>
+                As áreas criadas no meio da série (CIÊNCIAS AMBIENTAIS, desde 2012; NUTRIÇÃO, desde 2010; CIÊNCIAS E HUMANIDADES PARA A EDUCAÇÃO BÁSICA, em 2025) ficam como estão e não têm dados antes da criação.</li>
+              <li id="item-imp"><b>Alteração metodológica: área de avaliação em 2017, 2018 e 2019.</b> Nesses três anos a base não informa a área de avaliação de nenhuma bolsa, mas informa o código do programa de pós-graduação. A área foi recuperada por esse código, a partir dos outros anos da base: programas que sempre tiveram a mesma área recebem essa área; programas que mudaram de área ao longo do tempo recebem a área que tinham em 2020 (ou, se não aparecem em 2020, a do ano mais próximo); bolsas sem código de programa, ou de programas sem área conhecida, continuam sem área. Os valores por área nesses anos são, portanto, estimados, não registrados na base. Resultado: <span id="imp-resumo">…</span></li>
+              <li>Programa de fomento: nomes como aparecem na base. Nomes que só diferem em maiúsculas e minúsculas foram unidos sob a grafia mais frequente (<span id="progs-unidos">…</span>).</li>
+              <li>"INDEFINIDA (sem área de avaliação)" reúne bolsas registradas sem um programa de pós-graduação associado. Em 2017, 2018 e 2019, inclui só as bolsas cuja área não pôde ser recuperada. Essas bolsas que continuam sem área (cerca de 95 mil na série toda) não têm, na base, nem código de programa de pós-graduação nem área de conhecimento, então não há informação que permita recuperar a área. A maior parte é da Demanda Social (DS) e de Jovens Talentos/Iniciação Científica (JTCIC).</li>
+              <li>Instituições aparecem pela sigla da base. Alguns campi aparecem separados (por exemplo, UNESP/SV).</li>
+              <li>Os nomes das modalidades foram ajustados para leitura. "Doutorado profissional" corresponde à coluna "DOUTORADO PROFFISIONAL" da base, e "Mestrado acadêmico" à coluna "MESTRADO".</li>
+              <li>Mapa: malha estadual do IBGE (2020), obtida pelo pacote geobr e simplificada para o painel.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="vendor/d3.v7.min.js"></script>
+<script src="vendor/malha_uf.js"></script>
+<script src="dados.js"></script>
+<script>
+(function () {
+  'use strict';
+  if (typeof d3 === 'undefined' || !window.DADOS || !window.MALHA_UF) {
+    document.getElementById('erro').hidden = false;
+    return;
+  }
+
+  // ---------- Formatos ----------
+  const loc = d3.formatLocale({ decimal: ',', thousands: '.', grouping: [3], currency: ['R$', ''] });
+  const fInt = loc.format(',.0f');
+  const fPct = loc.format('.1%');
+  const fSigned = loc.format('+.1%');
+  const NIVEIS = ['Mestrado', 'Doutorado', 'Pós-doutorado', 'Iniciação', 'Professor e pesquisador visitante', 'Idiomas sem Fronteiras', 'Outras'];
+  const REGIOES = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'];
+  const $ = (id) => document.getElementById(id);
+  const setText = (id, v) => { const el = $(id); if (el) el.textContent = v == null ? '—' : v; };
+
+  // ---------- Dados: expande os índices do arquivo em texto ----------
+  const D = window.DADOS.dims;
+  const BOLSAS = window.DADOS.rows.map(([ano, uf, ies, area, mod, prog, bolsas]) => ({
+    ano, uf: D.uf[uf], regiao: D.regiao[uf], ies: D.ies[ies], area: D.area[area],
+    nivel: D.nivel[mod], modalidade: D.modalidade[mod], programa: D.programa[prog], bolsas,
+  }));
+  if (window.DADOS.areas_renomeadas) {
+    $('mapa-areas').replaceChildren(...Object.entries(window.DADOS.areas_renomeadas)
+      .sort((a, b) => a[1].localeCompare(b[1], 'pt'))
+      .map(([antigo, novo]) => { const li = document.createElement('li'); li.textContent = `${antigo} → ${novo}`; return li; }));
+  }
+  if (window.DADOS.programas_unidos) {
+    const u = Object.entries(window.DADOS.programas_unidos);
+    if (u.length) setText('progs-unidos', u.map(([g, m]) => `${g} em ${m}`).join('; '));
+  }
+  (function () {
+    const imp = window.DADOS.imputacao, item = document.getElementById('item-imp');
+    if (!imp) { if (item) item.hidden = true; return; }
+    const sem = imp.sem_codigo + imp.sem_area_conhecida;
+    // Parcelas abaixo de 0,1% aparecem como "menos de 0,1%", e não como um enganoso 0,0%
+    const p = (v) => `${fInt(v)} (${v > 0 && v / imp.bolsas < 0.001 ? 'menos de 0,1%' : fPct(v / imp.bolsas)})`;
+    setText('imp-resumo', `das ${fInt(imp.bolsas)} bolsas de 2017 a 2019, ${p(imp.area_unica)} pela área única do programa, ${p(imp.area_2020)} pela área de 2020, ${p(imp.ano_mais_proximo)} pelo ano mais próximo de 2020 e ${p(sem)} continuam sem área (${fInt(imp.sem_codigo)} sem código de programa e ${fInt(imp.sem_area_conhecida)} de programas sem área conhecida).`);
+  })();
+  if (window.DADOS.fonte) { setText('fonte', window.DADOS.fonte); setText('fonte-side', window.DADOS.fonte); }
+
+  // Malha das UFs: a d3 espera cada polígono com o contorno externo no sentido horário.
+  // Acerta o sentido de cada polígono e descarta pedaços degenerados da simplificação
+  // (menos de 4 pontos ou área menor que ~4 km²), que de outro modo cobririam o mapa.
+  const MALHA = window.MALHA_UF;
+  const AREA_MIN = 1e-7; // esterradianos
+  for (const f of MALHA.features) {
+    const g = f.geometry;
+    const polys = (g.type === 'Polygon' ? [g.coordinates] : g.coordinates)
+      .filter((p) => p[0] && p[0].length >= 4)
+      .map((p) => {
+        if (d3.geoArea({ type: 'Polygon', coordinates: p }) > 2 * Math.PI) p.forEach((anel) => anel.reverse());
+        return p;
+      })
+      .filter((p) => d3.geoArea({ type: 'Polygon', coordinates: p }) > AREA_MIN);
+    f.geometry = { type: 'MultiPolygon', coordinates: polys };
+  }
+
+  const unicos = (k) => [...new Set(BOLSAS.map((r) => r[k]))];
+  const OP = {
+    anos: unicos('ano').sort((a, b) => a - b),
+    ufs: [...new Map(BOLSAS.map((r) => [r.uf, r.regiao]))].map(([uf, regiao]) => ({ uf, regiao })).sort((a, b) => a.uf.localeCompare(b.uf)),
+    modalidades: [...new Map(BOLSAS.map((r) => [r.modalidade, r.nivel]))].map(([modalidade, nivel]) => ({ modalidade, nivel }))
+      .sort((a, b) => NIVEIS.indexOf(a.nivel) - NIVEIS.indexOf(b.nivel) || a.modalidade.localeCompare(b.modalidade, 'pt')),
+    areas: unicos('area').sort((a, b) => a.localeCompare(b, 'pt')),
+    ies: unicos('ies').sort((a, b) => a.localeCompare(b, 'pt')),
+    programas: unicos('programa').sort((a, b) => a.localeCompare(b, 'pt')),
+  };
+  const ANO_MIN = OP.anos[0], ANO_MAX = OP.anos[OP.anos.length - 1];
+
+  // ---------- Filtros (estado) ----------
+  const PADRAO = { ano_de: null, ano_ate: null, uf: null, nivel: null, modalidade: null, area: null, ies: null, programa: null };
+  let P = { ...PADRAO };
+  const setParams = (o) => { P = { ...P, ...o }; render(); };
+
+  // ---------- Cálculos ----------
+  function calcular() {
+    const base = BOLSAS.filter((r) =>
+      (!P.uf || r.uf === P.uf) && (!P.nivel || r.nivel === P.nivel) && (!P.modalidade || r.modalidade === P.modalidade) &&
+      (!P.area || r.area === P.area) && (!P.ies || r.ies === P.ies) &&
+      (!P.programa || r.programa === P.programa));
+    const porAno = d3.rollup(base, (v) => d3.sum(v, (r) => r.bolsas), (r) => r.ano);
+    const serie = OP.anos.map((ano) => ({ ano, bolsas: porAno.get(ano) ?? 0 }));
+    const de = P.ano_de ?? ANO_MIN, ate = P.ano_ate ?? ANO_MAX;
+    const selecao = base.filter((r) => r.ano >= de && r.ano <= ate);
+    const total = d3.sum(selecao, (r) => r.bolsas);
+    const agrupar = (chave) => d3.rollups(selecao, (v) => d3.sum(v, (r) => r.bolsas), (r) => r[chave])
+      .map(([k, bolsas]) => ({ [chave]: k, bolsas, participacao: total ? bolsas / total : 0 }))
+      .filter((r) => r.bolsas > 0).sort((a, b) => b.bolsas - a.bolsas);
+    const por_uf = agrupar('uf');
+    const ultimo = serie.find((r) => r.ano === ate);
+    const anterior = serie.find((r) => r.ano === ate - 1);
+    const bolsas_ultimo = ultimo ? ultimo.bolsas : 0;
+    return {
+      serie, selecao, por_uf,
+      por_mod: agrupar('modalidade'),
+      por_ies: agrupar('ies').slice(0, 15),
+      por_area: agrupar('area').slice(0, 15),
+      resumo: {
+        ano_ini: de, ano_fim: ate, total,
+        media_anual: total / (ate - de + 1),
+        bolsas_ultimo,
+        ano_anterior: anterior ? anterior.ano : null,
+        variacao: anterior && anterior.bolsas > 0 ? bolsas_ultimo / anterior.bolsas - 1 : null,
+        n_ies: new Set(selecao.map((r) => r.ies)).size,
+        uf_lider: por_uf.length ? por_uf[0].uf : null,
+        participacao_lider: por_uf.length ? por_uf[0].participacao : null,
+      },
+    };
+  }
+
+  // ---------- Utilidades de desenho ----------
+  const textW = (svg, strs, cls) => {
+    const t = svg.append('text').attr('class', cls).attr('x', -9999).attr('y', -9999);
+    let m = 0;
+    for (const s of strs) { t.text(s); m = Math.max(m, t.node().getComputedTextLength() || String(s).length * 7); }
+    t.remove();
+    return m;
+  };
+  const fit = (svg, s, maxW, cls) => {
+    if (textW(svg, [s], cls) <= maxW) return s;
+    let t = s;
+    while (t.length > 4 && textW(svg, [t + '…'], cls) > maxW) t = t.slice(0, -1);
+    return t + '…';
+  };
+  const roundRight = (x, y, w, h, r) => {
+    if (!(w > 0)) return '';
+    r = Math.min(r, w, h / 2);
+    return `M${x},${y}h${w - r}a${r},${r} 0 0 1 ${r},${r}v${h - 2 * r}a${r},${r} 0 0 1 -${r},${r}h${-(w - r)}z`;
+  };
+  const roundTop = (x, y, w, h, r) => {
+    if (!(h > 0)) return '';
+    r = Math.min(r, w / 2, h);
+    return `M${x},${y + h}v${-(h - r)}a${r},${r} 0 0 1 ${r},${-r}h${w - 2 * r}a${r},${r} 0 0 1 ${r},${r}v${h - r}z`;
+  };
+  const vazio = (el, temDados) => {
+    const sel = d3.select(el);
+    if (temDados) { sel.selectAll('.bp-state').remove(); return false; }
+    sel.selectAll('svg, .bp-tip').remove();
+    sel.selectAll('.bp-state').data([0]).join('p').attr('class', 'bp-state').text('Nenhuma bolsa com esses filtros.');
+    return true;
+  };
+  const tipDe = (el) => d3.select(el).selectAll('.bp-tip').data([0]).join('div').attr('class', 'bp-tip').property('hidden', true);
+  const mostrarTip = (el, tip, event, linhas) => {
+    const [mx, my] = d3.pointer(event, el);
+    tip.selectAll('div').data(linhas).join('div').attr('class', (d, i) => (i === 0 ? null : 'bp-tip-sub')).text((d) => d);
+    tip.property('hidden', false);
+    const tw = tip.node().offsetWidth, th = tip.node().offsetHeight;
+    tip.style('left', Math.max(0, Math.min(el.clientWidth - tw, mx + 12)) + 'px')
+      .style('top', (my - th - 10 < 0 ? my + 14 : my - th - 10) + 'px');
+  };
+  const ativar = (g, acao) => g
+    .on('click', (event, d) => acao(d))
+    .on('keydown', (event, d) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); acao(d); } });
+
+  // Barras horizontais: rótulo à esquerda (UF) ou acima da barra (nomes longos)
+  function hbar(el, rows, o) {
+    if (vazio(el, rows.length > 0)) return;
+    const W = Math.max(el.clientWidth, 240);
+    const svg = d3.select(el).selectAll('svg').data([0]).join('svg').attr('role', 'img').attr('aria-label', o.aria);
+    svg.selectAll('*').remove();
+    const tip = tipDe(el);
+    const valW = textW(svg, rows.map((r) => fInt(r.bolsas)), 'bp-val') + 8;
+    const barH = 12;
+    const [rowH, barY, x0] = o.stacked ? [38, 19, 0] : [20, 4, textW(svg, rows.map(o.label), 'bp-lbl') + 10];
+    const x = d3.scaleLinear().domain([0, d3.max(rows, (r) => r.bolsas) || 1]).range([0, Math.max(30, W - x0 - valW)]);
+    const H = rows.length * rowH;
+    svg.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const g = svg.selectAll('g.bp-row').data(rows).join('g').attr('class', 'bp-row')
+      .attr('transform', (d, i) => `translate(0,${i * rowH})`).attr('tabindex', 0).attr('role', 'button')
+      .attr('aria-label', (d) => `${o.label(d)}: ${fInt(d.bolsas)} bolsas. Filtrar por este item.`);
+    g.append('rect').attr('class', 'bp-hit').attr('width', W).attr('height', rowH).style('fill', 'transparent');
+    g.append('text').attr('class', 'bp-lbl')
+      .attr('x', o.stacked ? 0 : x0 - 10).attr('y', o.stacked ? 13 : barY + barH - 2).attr('text-anchor', o.stacked ? 'start' : 'end')
+      .text((d) => (o.stacked ? fit(svg, o.label(d), W, 'bp-lbl') : o.label(d)));
+    g.append('path').attr('d', (d) => roundRight(x0, barY, x(d.bolsas), barH, 3))
+      .style('fill', (d) => (!o.selected || o.selected(d) ? 'var(--bp-bar)' : 'var(--bp-bar-muted)'));
+    g.append('text').attr('class', 'bp-val').attr('x', (d) => x0 + x(d.bolsas) + 6).attr('y', barY + barH - 2).text((d) => fInt(d.bolsas));
+    g.on('pointermove', (event, d) => mostrarTip(el, tip, event, [o.label(d), `${fInt(d.bolsas)} bolsas · ${fPct(d.participacao)} da seleção`, o.dica(d)]))
+      .on('pointerleave', () => tip.property('hidden', true));
+    ativar(g, (d) => { tip.property('hidden', true); o.onClick(d); });
+  }
+
+  function graficoSerie(el, rows) {
+    if (vazio(el, rows.some((r) => r.bolsas > 0))) return;
+    const de = P.ano_de ?? -Infinity, ate = P.ano_ate ?? Infinity;
+    const W = Math.max(el.clientWidth, 240), H = 260;
+    const svg = d3.select(el).selectAll('svg').data([0]).join('svg').attr('role', 'img')
+      .attr('aria-label', `Bolsas por ano, de ${rows[0].ano} a ${rows[rows.length - 1].ano}`);
+    svg.selectAll('*').remove();
+    const tip = tipDe(el);
+    const y = d3.scaleLinear().domain([0, d3.max(rows, (r) => r.bolsas) || 1]).nice(4);
+    const ticks = y.ticks(4);
+    const ml = textW(svg, ticks.map(fInt), 'bp-tick') + 10, mr = 4, mt = 8, mb = 22;
+    y.range([H - mb, mt]);
+    svg.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const x = d3.scaleBand().domain(rows.map((r) => r.ano)).range([ml, W - mr]).paddingInner(0.2).paddingOuter(0.1);
+    const passo = x.step() < 15 ? 10 : 5;
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', ml).attr('x2', W - mr)
+      .attr('y1', (t) => y(t)).attr('y2', (t) => y(t)).style('stroke', (t) => (t === 0 ? 'var(--bp-axis)' : 'var(--bp-grid)'));
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('class', 'bp-tick')
+      .attr('x', ml - 6).attr('y', (t) => y(t) + 4).attr('text-anchor', 'end').text(fInt);
+    svg.append('g').selectAll('text').data(rows.filter((r) => r.ano % passo === 0)).join('text').attr('class', 'bp-tick')
+      .attr('x', (r) => x(r.ano) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').text((r) => r.ano);
+    const col = svg.append('g').selectAll('g').data(rows).join('g').attr('class', 'bp-col').attr('tabindex', 0).attr('role', 'button')
+      .attr('aria-label', (r) => `${r.ano}: ${fInt(r.bolsas)} bolsas. Filtrar por este ano.`);
+    col.append('rect').attr('class', 'bp-hit').attr('x', (r) => x(r.ano) - (x.step() - x.bandwidth()) / 2).attr('width', x.step())
+      .attr('y', mt).attr('height', H - mb - mt).style('fill', 'transparent');
+    col.append('path').attr('d', (r) => roundTop(x(r.ano), y(r.bolsas), x.bandwidth(), y(0) - y(r.bolsas), 3))
+      .style('fill', (r) => (r.ano >= de && r.ano <= ate ? 'var(--bp-bar)' : 'var(--bp-bar-muted)'));
+    col.on('pointermove', (event, r) => {
+      const ant = rows.find((q) => q.ano === r.ano - 1);
+      const linhas = [String(r.ano), `${fInt(r.bolsas)} bolsas`];
+      if (ant && ant.bolsas > 0) linhas.push(`${fSigned(r.bolsas / ant.bolsas - 1)} sobre ${ant.ano}`);
+      mostrarTip(el, tip, event, linhas);
+    }).on('pointerleave', () => tip.property('hidden', true));
+    ativar(col, (r) => {
+      tip.property('hidden', true);
+      const so = P.ano_de === r.ano && P.ano_ate === r.ano;
+      setParams({ ano_de: so ? null : r.ano, ano_ate: so ? null : r.ano });
+    });
+  }
+
+  // Mapa coroplético com escala contínua logarítmica: os totais por UF variam mais de
+  // 200 vezes (SP x AP), então cada passo de tom corresponde a multiplicar o valor,
+  // e tanto as UFs grandes quanto as pequenas ficam distinguíveis.
+  function graficoMapa(el, por_uf) {
+    if (vazio(el, por_uf.length > 0)) return;
+    const W = Math.max(el.clientWidth, 240);
+    const estreito = W < 560;
+    const Hmapa = Math.round(estreito ? W * 0.92 : Math.min(Math.max(W * 0.78, 320), 470));
+    const svg = d3.select(el).selectAll('svg').data([0]).join('svg').attr('role', 'img')
+      .attr('aria-label', 'Mapa do Brasil com as bolsas por UF no período escolhido, cores em escala logarítmica');
+    svg.selectAll('*').remove();
+    const tip = tipDe(el);
+    const valor = new Map(por_uf.map((r) => [r.uf, r]));
+    const vals = por_uf.map((r) => r.bolsas).sort(d3.ascending);
+    const vMin = vals[0], vMax = vals[vals.length - 1];
+
+    // Cores: do fundo do cartão levemente tingido (poucas bolsas) até a cor primária do tema (muitas)
+    const primaria = getComputedStyle(el).getPropertyValue('--tblr-primary').trim() || '#066fd1';
+    const fundo = getComputedStyle(el.closest('.card') || document.body).backgroundColor;
+    const interp = d3.interpolateLab(d3.interpolateLab(fundo, primaria)(0.12), primaria);
+    const posicao = vMin === vMax ? () => 1 : d3.scaleLog().domain([vMin, vMax]).range([0, 1]).clamp(true);
+    const cor = (v) => interp(posicao(v));
+
+    const legW = Math.min(320, Math.round(W * (estreito ? 0.85 : 0.5)));
+    const legH = 50;
+    const H = Hmapa + legH + 8; // legenda sempre abaixo do mapa, sem cobrir nenhuma UF
+    svg.attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`);
+    const proj = d3.geoMercator().fitExtent([[0, 6], [W - 6, Hmapa - 6]], MALHA);
+    const path = d3.geoPath(proj);
+    svg.append('g').selectAll('path').data(MALHA.features).join('path')
+      .attr('class', 'bp-uf').attr('d', path)
+      .attr('tabindex', 0).attr('role', 'button')
+      .attr('aria-label', (f) => { const r = valor.get(f.properties.uf); return `${f.properties.nome}: ${r ? fInt(r.bolsas) : 0} bolsas. Filtrar por esta UF.`; })
+      .style('fill', (f) => { const r = valor.get(f.properties.uf); return r ? cor(r.bolsas) : 'var(--bp-map-0)'; })
+      .style('stroke', (f) => (P.uf === f.properties.uf ? 'var(--tblr-body-color)' : 'var(--bp-map-stroke)'))
+      .style('stroke-width', (f) => (P.uf === f.properties.uf ? 2 : 0.8))
+      .on('pointermove', (event, f) => {
+        const r = valor.get(f.properties.uf);
+        mostrarTip(el, tip, event, [`${f.properties.nome} (${f.properties.uf})`,
+          r ? `${fInt(r.bolsas)} bolsas · ${fPct(r.participacao)} da seleção` : 'Sem bolsas na seleção',
+          P.uf === f.properties.uf ? 'Clique para tirar o filtro' : `Clique para filtrar por ${f.properties.uf}`]);
+      })
+      .on('pointerleave', () => tip.property('hidden', true));
+    ativar(svg.selectAll('.bp-uf'), (f) => { tip.property('hidden', true); setParams({ uf: P.uf === f.properties.uf ? null : f.properties.uf }); });
+
+    // Legenda: barra em degradê com o mínimo, o máximo e as potências de 10 entre eles
+    // (dentro do SVG, para sair junto no PNG)
+    const leg = svg.append('g').attr('transform', `translate(2, ${Hmapa + 8})`);
+    leg.append('text').attr('class', 'bp-tick').attr('y', 10)
+      .text(vMin === vMax ? 'Bolsas no período' : 'Bolsas no período (escala logarítmica)');
+    if (vMin === vMax) {
+      leg.append('rect').attr('y', 18).attr('width', 12).attr('height', 12).attr('rx', 2).style('fill', cor(vMax));
+      leg.append('text').attr('class', 'bp-tick').attr('x', 18).attr('y', 28).text(fInt(vMax));
+      return;
+    }
+    const grad = svg.append('defs').append('linearGradient').attr('id', 'bp-grad-mapa');
+    d3.range(0, 1.0001, 0.1).forEach((t) => grad.append('stop').attr('offset', t).attr('stop-color', interp(t)));
+    leg.append('rect').attr('y', 18).attr('width', legW).attr('height', 10).attr('rx', 2).attr('fill', 'url(#bp-grad-mapa)');
+    const xLeg = d3.scaleLog().domain([vMin, vMax]).range([0, legW]);
+    const marcas = [{ v: vMin, ancora: 'start' }, { v: vMax, ancora: 'end' }];
+    const larg = (v) => textW(svg, [fInt(v)], 'bp-tick');
+    for (let p = Math.ceil(Math.log10(vMin)); 10 ** p < vMax; p++) {
+      const v = 10 ** p, x = xLeg(v), meia = larg(v) / 2 + 4;
+      if (x - meia > larg(vMin) && x + meia < legW - larg(vMax)) marcas.push({ v, ancora: 'middle' });
+    }
+    const m = leg.selectAll('g.bp-marca').data(marcas).join('g').attr('class', 'bp-marca').attr('transform', (d) => `translate(${xLeg(d.v)}, 0)`);
+    m.append('line').attr('y1', 28).attr('y2', 32).style('stroke', 'var(--bp-axis)');
+    m.append('text').attr('class', 'bp-tick').attr('y', 45).attr('text-anchor', (d) => d.ancora).text((d) => fInt(d.v));
+  }
+
+  // ---------- Exportar gráfico em PNG (com título, filtros e fonte) ----------
+  function descreverFiltros() {
+    const partes = [];
+    const de = P.ano_de ?? ANO_MIN, ate = P.ano_ate ?? ANO_MAX;
+    partes.push(de === ate ? `Ano ${de}` : `${de} a ${ate}`);
+    if (P.uf) partes.push(`UF ${P.uf}`);
+    if (P.nivel) partes.push(P.nivel);
+    if (P.modalidade) partes.push(P.modalidade);
+    if (P.area) partes.push(P.area);
+    if (P.ies) partes.push(P.ies);
+    if (P.programa) partes.push(P.programa);
+    return partes.join(' · ');
+  }
+  const PROPS = ['fill', 'stroke', 'stroke-width', 'opacity', 'font-size', 'font-weight', 'text-anchor', 'font-variant-numeric'];
+  function exportarPNG(card) {
+    const svg = card.querySelector('.bp-chart svg');
+    if (!svg) return;
+    const W = svg.viewBox.baseVal.width || svg.clientWidth, Hc = svg.viewBox.baseVal.height || svg.clientHeight;
+    const clone = svg.cloneNode(true);
+    const orig = [svg, ...svg.querySelectorAll('*')], copia = [clone, ...clone.querySelectorAll('*')];
+    orig.forEach((o, i) => {
+      const cs = getComputedStyle(o);
+      PROPS.forEach((p) => copia[i].style.setProperty(p, cs.getPropertyValue(p)));
+      copia[i].style.setProperty('text-decoration', 'none');
+      copia[i].removeAttribute('class');
+    });
+    const corpo = getComputedStyle(document.body);
+    const surface = getComputedStyle(card).backgroundColor || '#fff';
+    const fg = corpo.color, muted = getComputedStyle($('t-ano-ini').parentElement).color;
+    // Rodapé do PNG: fonte e autoria; em gráficos estreitos (celular), quebra em mais linhas para não cortar
+    const RODAPE = W >= 520
+      ? ['Autoria: painel gerado por Claude, IA da Anthropic, sob supervisão de Claudio de Oliveira,', 'a partir de dados públicos da CAPES disponíveis no GEOCAPES (geocapes.capes.gov.br).']
+      : ['Autoria: painel gerado por Claude, IA da Anthropic,', 'sob supervisão de Claudio de Oliveira, a partir de', 'dados públicos da CAPES disponíveis no GEOCAPES', '(geocapes.capes.gov.br).'];
+    const pad = 20, topo = 58, rodape = 14 + 16 * RODAPE.length;
+    const NS = 'http://www.w3.org/2000/svg';
+    const out = document.createElementNS(NS, 'svg');
+    out.setAttribute('xmlns', NS);
+    out.setAttribute('width', W + 2 * pad); out.setAttribute('height', Hc + topo + rodape + pad);
+    out.setAttribute('font-family', "'Inter Var', 'Segoe UI', Arial, sans-serif");
+    const add = (tag, attrs, texto) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (texto) e.textContent = texto; out.append(e); return e; };
+    add('rect', { width: '100%', height: '100%', fill: surface });
+    add('text', { x: pad, y: pad + 14, 'font-size': 16, 'font-weight': 600, fill: fg }, card.dataset.titulo);
+    add('text', { x: pad, y: pad + 34, 'font-size': 12, fill: muted }, descreverFiltros());
+    const g = add('g', { transform: `translate(${pad}, ${topo})` });
+    g.append(...clone.childNodes);
+    RODAPE.forEach((t, i) => add('text', { x: pad, y: topo + Hc + rodape - 6 - 16 * (RODAPE.length - 1 - i), 'font-size': 11, fill: muted }, t));
+    const xml = new XMLSerializer().serializeToString(out);
+    const img = new Image();
+    img.onload = () => {
+      const escala = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = (W + 2 * pad) * escala; canvas.height = (Hc + topo + rodape + pad) * escala;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(escala, escala);
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `grafico_${card.dataset.png}_${descreverFiltros().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '')}.png`;
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      }, 'image/png');
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+  }
+  document.querySelectorAll('[data-png] .bp-png').forEach((b) => b.addEventListener('click', () => exportarPNG(b.closest('[data-png]'))));
+
+  // ---------- Controles ----------
+  function montarFiltros() {
+    for (const id of ['f-de', 'f-ate']) $(id).replaceChildren(...OP.anos.map((a) => new Option(String(a), String(a))));
+    const uf = [new Option('Todas as UFs', '')];
+    for (const regiao of REGIOES) {
+      const g = document.createElement('optgroup'); g.label = regiao;
+      OP.ufs.filter((u) => u.regiao === regiao).forEach((u) => g.append(new Option(u.uf, u.uf)));
+      if (g.children.length) uf.push(g);
+    }
+    $('f-uf').replaceChildren(...uf);
+    const mod = [new Option('Todas as modalidades', '')];
+    for (const nivel of NIVEIS) {
+      const ms = OP.modalidades.filter((m) => m.nivel === nivel);
+      if (!ms.length) continue;
+      const g = document.createElement('optgroup'); g.label = nivel;
+      if (ms.length > 1) g.append(new Option(`${nivel}: todas`, 'n|' + nivel));
+      ms.forEach((m) => g.append(new Option(m.modalidade, 'm|' + m.modalidade)));
+      mod.push(g);
+    }
+    $('f-mod').replaceChildren(...mod);
+    $('f-area').replaceChildren(new Option('Todas as áreas', ''), ...OP.areas.map((a) => new Option(a, a)));
+    $('ies-lista').replaceChildren(...OP.ies.map((s) => new Option(s)));
+    $('prog-lista').replaceChildren(...OP.programas.map((s) => new Option(s)));
+
+    const mudarAno = () => {
+      let de = Number($('f-de').value), ate = Number($('f-ate').value);
+      if (de > ate) [de, ate] = [ate, de];
+      setParams({ ano_de: de === ANO_MIN ? null : de, ano_ate: ate === ANO_MAX ? null : ate });
+    };
+    $('f-de').addEventListener('change', mudarAno);
+    $('f-ate').addEventListener('change', mudarAno);
+    $('f-uf').addEventListener('change', (e) => setParams({ uf: e.target.value || null }));
+    $('f-area').addEventListener('change', (e) => setParams({ area: e.target.value || null }));
+    $('f-mod').addEventListener('change', (e) => {
+      const v = e.target.value, tipo = v.slice(0, 1), valor = v.slice(2);
+      setParams({ nivel: tipo === 'n' ? valor : null, modalidade: tipo === 'm' ? valor : null });
+    });
+    const aplicarIes = () => {
+      const v = $('f-ies').value.trim().toUpperCase();
+      const achou = OP.ies.find((s) => s.toUpperCase() === v);
+      $('ies-erro').hidden = !(v && !achou);
+      if (!v) setParams({ ies: null });
+      else if (achou) setParams({ ies: achou });
+    };
+    $('f-ies').addEventListener('change', aplicarIes);
+    $('f-ies').addEventListener('search', aplicarIes);
+    const aplicarProg = () => {
+      const v = $('f-prog').value.trim().toUpperCase();
+      const achou = OP.programas.find((s) => s.toUpperCase() === v);
+      $('prog-erro').hidden = !(v && !achou);
+      if (!v) setParams({ programa: null });
+      else if (achou) setParams({ programa: achou });
+    };
+    $('f-prog').addEventListener('change', aplicarProg);
+    $('f-prog').addEventListener('search', aplicarProg);
+    $('limpar').addEventListener('click', () => { $('ies-erro').hidden = true; $('prog-erro').hidden = true; P = { ...PADRAO }; render(); });
+    $('baixar').addEventListener('click', baixarCSV);
+  }
+
+  function atualizarControles() {
+    $('f-de').value = String(P.ano_de ?? ANO_MIN);
+    $('f-ate').value = String(P.ano_ate ?? ANO_MAX);
+    $('f-uf').value = P.uf ?? '';
+    $('f-mod').value = P.modalidade ? 'm|' + P.modalidade : P.nivel ? 'n|' + P.nivel : '';
+    $('f-area').value = P.area ?? '';
+    if (document.activeElement !== $('f-ies')) $('f-ies').value = P.ies ?? '';
+    if (document.activeElement !== $('f-prog')) $('f-prog').value = P.programa ?? '';
+
+    const ROT = { uf: 'UF', nivel: 'Nível', modalidade: 'Modalidade', area: 'Área', ies: 'Instituição', programa: 'Programa' };
+    const chips = [];
+    if (P.ano_de != null || P.ano_ate != null) {
+      const de = P.ano_de ?? ANO_MIN, ate = P.ano_ate ?? ANO_MAX;
+      chips.push({ texto: de === ate ? `Ano: ${de}` : `Período: ${de} a ${ate}`, limpar: { ano_de: null, ano_ate: null } });
+    }
+    for (const k of Object.keys(ROT)) if (P[k]) chips.push({ texto: `${ROT[k]}: ${P[k]}`, limpar: { [k]: null } });
+    $('chips').replaceChildren(...(chips.length ? chips.map((c) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'bp-chip'; b.setAttribute('aria-label', `Remover filtro ${c.texto}`);
+      const t = document.createElement('span'); t.textContent = c.texto;
+      const x = document.createElement('span'); x.className = 'bp-chip-x'; x.textContent = '×';
+      b.append(t, x);
+      b.addEventListener('click', () => setParams(c.limpar));
+      return b;
+    }) : [document.createTextNode('nenhum; o painel mostra toda a base.')]));
+    $('limpar').disabled = !chips.length;
+    $('aviso-mp').hidden = !(P.modalidade === 'Mestrado profissional' || P.nivel === 'Mestrado');
+    $('t-lider').hidden = !!P.uf;
+  }
+
+  // ---------- CSV da seleção (ponto e vírgula, para o Excel em português) ----------
+  let ULTIMA = null;
+  function baixarCSV() {
+    if (!ULTIMA) return;
+    const cols = ['ano', 'regiao', 'uf', 'ies', 'area', 'nivel', 'modalidade', 'programa', 'bolsas'];
+    const esc = (v) => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const linhas = [cols.join(';'), ...ULTIMA.selecao.map((r) => cols.map((c) => esc(r[c])).join(';'))];
+    const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const sufixo = [P.ano_de ?? ANO_MIN, P.ano_ate ?? ANO_MAX, P.uf, P.ies, P.programa].filter(Boolean).join('_').replace(/[^\w-]+/g, '-');
+    a.download = `bolsas_capes_${sufixo}.csv`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // ---------- Números animados: contam do valor anterior até o novo ----------
+  // (na primeira abertura, contam a partir de zero; com "reduzir movimento" ligado no sistema, mudam direto)
+  const REDUZ = window.matchMedia('(prefers-reduced-motion: reduce)');
+  function num(id, v, fmt = fInt) {
+    const el = $(id);
+    if (!el) return;
+    const sel = d3.select(el).interrupt();
+    if (v == null || !isFinite(v)) { el._v = null; el.textContent = '—'; return; }
+    const de = el._v ?? 0;
+    el._v = v;
+    if (REDUZ.matches || de === v) { el.textContent = fmt(v); return; }
+    sel.transition().duration(750).ease(d3.easeCubicOut)
+      .tween('text', () => { const i = d3.interpolateNumber(de, v); return (t) => { el.textContent = fmt(i(t)); }; });
+  }
+
+  // ---------- Desenho geral ----------
+  function render() {
+    const c = calcular();
+    ULTIMA = c;
+    atualizarControles();
+    const r = c.resumo;
+    setText('t-ano-ini', r.ano_ini); setText('t-ano-fim', r.ano_fim); num('t-total', r.total);
+    setText('t-uf-lider', r.uf_lider); setText('t-part-lider', r.participacao_lider == null ? null : fPct(r.participacao_lider));
+    num('k-total', r.total); setText('k-ano-ini', r.ano_ini); setText('k-ano-fim', r.ano_fim); setText('k-ano-fim2', r.ano_fim);
+    num('k-ultimo', r.bolsas_ultimo); num('k-media', r.media_anual); num('k-ies', r.n_ies);
+    // Variação menor que 0,05% aparece como 0,0%, sem cor (não é alta nem queda)
+    const v = r.variacao == null ? null : Math.abs(r.variacao) < 0.0005 ? 0 : r.variacao;
+    setText('k-var', v == null ? null : v === 0 ? fPct(0) : fSigned(v)); setText('k-ano-ant', r.ano_anterior);
+    $('k-var').classList.toggle('bp-up', v != null && v > 0);
+    $('k-var').classList.toggle('bp-down', v != null && v < 0);
+    $('k-var-com').hidden = v == null; $('k-var-sem').hidden = v != null;
+    $('baixar').disabled = !c.selecao.length;
+
+    graficoSerie($('g-serie'), c.serie);
+    graficoMapa($('g-mapa'), c.por_uf);
+    hbar($('g-uf'), c.por_uf, {
+      aria: 'Bolsas por UF no período escolhido', label: (d) => d.uf,
+      selected: P.uf ? (d) => d.uf === P.uf : null,
+      dica: (d) => (P.uf === d.uf ? 'Clique para tirar o filtro' : `Clique para filtrar por ${d.uf}`),
+      onClick: (d) => setParams({ uf: P.uf === d.uf ? null : d.uf }),
+    });
+    hbar($('g-mod'), c.por_mod, {
+      aria: 'Bolsas por modalidade no período escolhido', stacked: true, label: (d) => d.modalidade,
+      selected: P.modalidade ? (d) => d.modalidade === P.modalidade : null,
+      dica: (d) => (P.modalidade === d.modalidade ? 'Clique para tirar o filtro' : 'Clique para filtrar por esta modalidade'),
+      onClick: (d) => setParams({ nivel: null, modalidade: P.modalidade === d.modalidade ? null : d.modalidade }),
+    });
+    hbar($('g-ies'), c.por_ies, {
+      aria: 'As 15 instituições com mais bolsas no período escolhido', stacked: true, label: (d) => d.ies,
+      selected: P.ies ? (d) => d.ies === P.ies : null,
+      dica: (d) => (P.ies === d.ies ? 'Clique para tirar o filtro' : `Clique para filtrar por ${d.ies}`),
+      onClick: (d) => setParams({ ies: P.ies === d.ies ? null : d.ies }),
+    });
+    hbar($('g-area'), c.por_area, {
+      aria: 'As 15 áreas de avaliação com mais bolsas no período escolhido', stacked: true, label: (d) => d.area,
+      selected: P.area ? (d) => d.area === P.area : null,
+      dica: (d) => (P.area === d.area ? 'Clique para tirar o filtro' : 'Clique para filtrar por esta área'),
+      onClick: (d) => setParams({ area: P.area === d.area ? null : d.area }),
+    });
+  }
+
+  montarFiltros();
+  render();
+  let espera;
+  window.addEventListener('resize', () => { clearTimeout(espera); espera = setTimeout(render, 150); });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => setTimeout(() => { botaoTema(); render(); }, 0));
+
+  // Botão de tema: mostra o sol no escuro (para ir ao claro) e a lua no claro (para ir ao escuro)
+  const ICO_SOL = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  const ICO_LUA = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+  function botaoTema() {
+    const escuro = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    const rotulo = escuro ? 'Trocar para o tema claro' : 'Trocar para o tema escuro';
+    $('ico-tema').innerHTML = escuro ? ICO_SOL : ICO_LUA;
+    $('tema').setAttribute('aria-label', rotulo);
+    $('tema').title = rotulo;
+  }
+  botaoTema();
+  $('tema').addEventListener('click', () => {
+    const novo = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-bs-theme', novo);
+    try { localStorage.setItem('painel_v11_tema', novo); } catch (e) {}
+    botaoTema();
+    render();
+  });
+})();
+</script>
+</body>
+</html>
